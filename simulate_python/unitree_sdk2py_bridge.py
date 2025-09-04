@@ -114,6 +114,7 @@ class UnitreeSdk2Bridge:
 
     def PublishLowState(self):
         if self.mj_data != None:
+            self.low_state.tick += 1
             for i in range(self.num_motor):
                 self.low_state.motor_state[i].q = self.mj_data.sensordata[i]
                 self.low_state.motor_state[i].dq = self.mj_data.sensordata[i + self.num_motor]
