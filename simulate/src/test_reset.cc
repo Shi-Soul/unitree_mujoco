@@ -139,6 +139,7 @@ int main(int argc, char* argv[])
     catch (const std::exception& e)
     {
         std::cerr << "Failed to load config.yaml: " << e.what() << std::endl;
+        return 1;
         std::cerr << "Using default values: domain_id=1, interface=lo" << std::endl;
         param::config.domain_id = 1;
         param::config.interface = "lo";
