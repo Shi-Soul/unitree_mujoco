@@ -9,6 +9,7 @@
 
 #include "param.h"
 #include "physics_joystick.h"
+#include "reset_dds_wrapper.hpp"
 
 #define MOTOR_SENSOR_NUM 3
 
@@ -111,7 +112,7 @@ class UnitreeSDK2BridgeBase
     }
 };
 
-template <typename LowCmd_t, typename LowState_t>
+template <typename LowCmd_t, typename LowState_t, typename Reset_t>
 class RobotBridge : public UnitreeSDK2BridgeBase
 {
     using HighState_t = unitree::robot::go2::publisher::SportModeState;
@@ -121,6 +122,8 @@ class RobotBridge : public UnitreeSDK2BridgeBase
     RobotBridge(mjModel *model, mjData *data) : UnitreeSDK2BridgeBase(model, data)
     {
         lowcmd = std::make_shared<LowCmd_t>("rt/lowcmd");
+        reset = std::make_shared<Reset_t>("rt/mjc/reset");
+        reset->set_timeout_ms(50);
         lowstate = std::make_unique<LowState_t>();
         lowstate->joystick = joystick;
         highstate = std::make_unique<HighState_t>();
@@ -146,6 +149,30 @@ class RobotBridge : public UnitreeSDK2BridgeBase
                 auto &m = lowcmd->msg_.motor_cmd()[i];
                 mj_data_->ctrl[i] = m.tau() + m.kp() * (m.q() - mj_data_->sensordata[i]) +
                                     m.kd() * (m.dq() - mj_data_->sensordata[i + num_motor_]);
+            }
+        }
+        {
+            std::lock_guard<std::mutex> lock(reset->mutex_);
+
+            // std::cout << "try reset" << std::endl;
+            if (!reset->isTimeout())
+            {
+                // mj_resetData(mj_model_, mj_data_);
+                for (int i = 0; i < mj_model_->nu; i++)
+                {
+                    mj_data_->ctrl[i] = 0;
+                }
+                for (int i = 0; i < mj_model_->nv; i++)
+                {
+                    mj_data_->qvel[i] = 0;
+                }
+                for (int i = 0; i < mj_model_->nq; i++)
+                {
+                    mj_data_->qpos[i] = 0;
+                }
+                mj_data_->qpos[2] = 0.79;
+                mj_data_->qpos[3] = 1.0;
+                std::cout << "reset done" << std::endl;
             }
         }
 
@@ -229,12 +256,13 @@ class RobotBridge : public UnitreeSDK2BridgeBase
     std::unique_ptr<WirelessController_t> wireless_controller;
     std::shared_ptr<LowCmd_t> lowcmd;
     std::unique_ptr<LowState_t> lowstate;
+    std::shared_ptr<Reset_t> reset;
 
    private:
     unitree::common::RecurrentThreadPtr thread_;
 };
 
 using Go2Bridge = RobotBridge<unitree::robot::go2::subscription::LowCmd,
-                              unitree::robot::go2::publisher::LowState>;
-using G1Bridge =
-    RobotBridge<unitree::robot::g1::subscription::LowCmd, unitree::robot::g1::publisher::LowState>;
+                              unitree::robot::go2::publisher::LowState, ResetSubs>;
+using G1Bridge = RobotBridge<unitree::robot::g1::subscription::LowCmd,
+                             unitree::robot::g1::publisher::LowState, ResetSubs>;

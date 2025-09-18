@@ -32,4 +32,7 @@ set(SIM_DEPENDENCIES
 add_executable(unitree_mujoco ${SIM_SRC} src/main.cc)
 target_link_libraries(unitree_mujoco ${SIM_DEPENDENCIES})
 
+add_executable(test_reset src/test_reset.cc)
+target_link_libraries(test_reset ${SIM_DEPENDENCIES})
+
 add_executable(jstest src/joystick/jstest.cc src/joystick/joystick.cc)
