@@ -352,7 +352,8 @@ class ResetSubscriber
         // Create the subscriber for reset commands
         reset_sub_ = std::make_unique<unitree::robot::ChannelSubscriber<ResetMessage>>(
             "rt/mjc/reset", [this](const void *msg) { this->resetCallback(msg); });
-        std::cout << "Reset subscriber initialized. Listening on 'mjc/reset' topic." << std::endl;
+        std::cout << "Reset subscriber initialized. Listening on 'rt/mjc/reset' topic."
+                  << std::endl;
     }
 
    private:
