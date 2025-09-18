@@ -151,6 +151,7 @@ class RobotBridge : public UnitreeSDK2BridgeBase
                                     m.kd() * (m.dq() - mj_data_->sensordata[i + num_motor_]);
             }
         }
+        // reset
         {
             std::lock_guard<std::mutex> lock(reset->mutex_);
 
@@ -193,6 +194,7 @@ class RobotBridge : public UnitreeSDK2BridgeBase
         if (lowstate->trylock())
         {
             lowstate->msg_.tick() += 1;
+            // std::cout << "lowstate tick: " << lowstate->msg_.tick() << std::endl;
             for (int i(0); i < num_motor_; i++)
             {
                 lowstate->msg_.motor_state()[i].q() = mj_data_->sensordata[i];
