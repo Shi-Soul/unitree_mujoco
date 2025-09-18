@@ -14,11 +14,13 @@
 
 #include <mujoco/mujoco.h>
 
+#include <atomic>
 #include <chrono>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <filesystem>
 #include <iostream>
 #include <memory>
 #include <mutex>
@@ -31,6 +33,10 @@
 #include "mujoco/simulate.h"
 #include "param.h"
 #include "unitree_sdk2_bridge.h"
+
+// ROS2 includes
+#include <rclcpp/rclcpp.hpp>
+#include <std_msgs/msg/empty.hpp>
 
 #define MUJOCO_PLUGIN_DIR "mujoco_plugin"
 #define NUM_MOTOR_IDL_GO 20
@@ -64,6 +70,9 @@ mjData *d = nullptr;
 
 // control noise variables
 mjtNum *ctrlnoise = nullptr;
+
+// Reset flag
+std::atomic<bool> reset_requested{false};
 
 using Seconds = std::chrono::duration<double>;
 
@@ -289,6 +298,45 @@ mjModel *LoadModel(const char *file, mj::Simulate &sim)
     return mnew;
 }
 
+// Reset robot to default position and clear velocities
+void ResetRobot()
+{
+    if (m && d)
+    {
+        // Reset to keyframe 0 (default position) if available
+        if (m->nkey > 0)
+        {
+            mj_resetDataKeyframe(m, d, 0);
+        }
+        else
+        {
+            // Reset to default positions manually
+            mj_resetData(m, d);
+            // Set positions to default joint positions if available
+            for (int i = 0; i < m->nq; i++)
+            {
+                d->qpos[i] = m->qpos0[i];
+            }
+            // Clear velocities
+            for (int i = 0; i < m->nv; i++)
+            {
+                d->qvel[i] = 0.0;
+            }
+        }
+
+        // Clear applied forces
+        for (int i = 0; i < m->nbody * 6; i++)
+        {
+            d->xfrc_applied[i] = 0.0;
+        }
+
+        // Forward kinematics to update derived quantities
+        mj_forward(m, d);
+
+        std::printf("Robot reset to default position\n");
+    }
+}
+
 // simulate in background thread (while rendering in main thread)
 void PhysicsLoop(mj::Simulate &sim)
 {
@@ -296,12 +344,16 @@ void PhysicsLoop(mj::Simulate &sim)
     std::chrono::time_point<mj::Simulate::Clock> syncCPU;
     mjtNum syncSim = 0;
 
-    // ChannelFactory::Instance()->Init(0);
-    // UnitreeDds ud(d);
-
     // run until asked to exit
     while (!sim.exitrequest.load())
     {
+        // Check for reset request
+        if (reset_requested.load())
+        {
+            ResetRobot();
+            reset_requested.store(false);
+        }
+
         if (sim.droploadrequest.load())
         {
             sim.LoadMessage(sim.dropfilename);
@@ -581,6 +633,34 @@ void *UnitreeSdk2BridgeThread(void *arg)
         sleep(1);
     }
 }
+
+//-------------------------------------- ROS2 Node Class
+//--------------------------------------------
+
+class MuJoCoSimulateNode : public rclcpp::Node
+{
+   public:
+    MuJoCoSimulateNode() : Node("mujoco_simulate_node")
+    {
+        // Create subscriber for reset topic
+        reset_subscriber_ = this->create_subscription<std_msgs::msg::Empty>(
+            "/mjc/reset", 10,
+            std::bind(&MuJoCoSimulateNode::resetCallback, this, std::placeholders::_1));
+
+        RCLCPP_INFO(this->get_logger(),
+                    "MuJoCo Simulate Node started. Listening for reset commands on /mjc/reset");
+    }
+
+   private:
+    void resetCallback(const std_msgs::msg::Empty::SharedPtr msg)
+    {
+        RCLCPP_INFO(this->get_logger(), "Reset command received, requesting robot reset");
+        reset_requested.store(true);
+    }
+
+    rclcpp::Subscription<std_msgs::msg::Empty>::SharedPtr reset_subscriber_;
+};
+
 //------------------------------------------ main --------------------------------------------------
 
 // machinery for replacing command line error by a macOS dialog box when running under Rosetta
@@ -596,6 +676,9 @@ __attribute__((used, visibility("default"))) extern "C" void _mj_rosettaError(co
 // run event loop
 int main(int argc, char **argv)
 {
+    // Initialize ROS2
+    rclcpp::init(argc, argv);
+
     // display an error if running on macOS under Rosetta 2
 #if defined(__APPLE__) && defined(__AVX__)
     if (rosetta_error_msg)
@@ -640,13 +723,26 @@ int main(int argc, char **argv)
 
     sim->use_elastic_band_ = param::config.enable_elastic_band;
 
+    // Create ROS2 node
+    auto node = std::make_shared<MuJoCoSimulateNode>();
+
+    // Start ROS2 spinner in separate thread
+    std::thread ros_thread([node]() { rclcpp::spin(node); });
+
     std::thread unitree_thread(UnitreeSdk2BridgeThread, nullptr);
 
     // start physics thread
     std::thread physicsthreadhandle(&PhysicsThread, sim.get(), param::config.robot_scene.c_str());
+
     // start simulation UI loop (blocking call)
     sim->RenderLoop();
+
+    // Cleanup
     physicsthreadhandle.join();
+
+    // Shutdown ROS2
+    rclcpp::shutdown();
+    ros_thread.join();
 
     pthread_exit(NULL);
     return 0;
