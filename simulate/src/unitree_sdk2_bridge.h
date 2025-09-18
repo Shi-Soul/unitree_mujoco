@@ -157,22 +157,35 @@ class RobotBridge : public UnitreeSDK2BridgeBase
             // std::cout << "try reset" << std::endl;
             if (!reset->isTimeout())
             {
-                // mj_resetData(mj_model_, mj_data_);
-                for (int i = 0; i < mj_model_->nu; i++)
+                // 检查reset时间是否发生变化
+                bool time_changed = (reset->msg_.sec() != last_reset_sec_) ||
+                                    (reset->msg_.nanosec() != last_reset_nanosec_);
+
+                if (time_changed)
                 {
-                    mj_data_->ctrl[i] = 0;
+                    // 更新记录的时间
+                    last_reset_sec_ = reset->msg_.sec();
+                    last_reset_nanosec_ = reset->msg_.nanosec();
+
+                    // 执行reset操作
+                    // mj_resetData(mj_model_, mj_data_);
+                    for (int i = 0; i < mj_model_->nu; i++)
+                    {
+                        mj_data_->ctrl[i] = 0;
+                    }
+                    for (int i = 0; i < mj_model_->nv; i++)
+                    {
+                        mj_data_->qvel[i] = 0;
+                    }
+                    for (int i = 0; i < mj_model_->nq; i++)
+                    {
+                        mj_data_->qpos[i] = 0;
+                    }
+                    mj_data_->qpos[2] = 0.79;
+                    mj_data_->qpos[3] = 1.0;
+                    std::cout << "reset done at time: " << last_reset_sec_ << "s "
+                              << last_reset_nanosec_ << "ns" << std::endl;
                 }
-                for (int i = 0; i < mj_model_->nv; i++)
-                {
-                    mj_data_->qvel[i] = 0;
-                }
-                for (int i = 0; i < mj_model_->nq; i++)
-                {
-                    mj_data_->qpos[i] = 0;
-                }
-                mj_data_->qpos[2] = 0.79;
-                mj_data_->qpos[3] = 1.0;
-                std::cout << "reset done" << std::endl;
             }
         }
 
@@ -260,6 +273,9 @@ class RobotBridge : public UnitreeSDK2BridgeBase
 
    private:
     unitree::common::RecurrentThreadPtr thread_;
+    // 添加成员变量记录上一次reset的时间
+    int32_t last_reset_sec_ = 0;
+    uint32_t last_reset_nanosec_ = 0;
 };
 
 using Go2Bridge = RobotBridge<unitree::robot::go2::subscription::LowCmd,
