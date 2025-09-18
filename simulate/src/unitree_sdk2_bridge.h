@@ -177,13 +177,18 @@ class RobotBridge : public UnitreeSDK2BridgeBase
                     for (int i = 0; i < mj_model_->nv; i++)
                     {
                         mj_data_->qvel[i] = 0;
+                        // mj_data_->sensordata[i + num_motor_] = 0;
+                        // mj_data_->sensordata[i + 2 * num_motor_] = 0;
                     }
                     for (int i = 0; i < mj_model_->nq; i++)
                     {
                         mj_data_->qpos[i] = 0;
+                        // mj_data_->sensordata[i] = 0;
                     }
                     mj_data_->qpos[2] = 0.79;
                     mj_data_->qpos[3] = 1.0;
+                    mj_forward(mj_model_, mj_data_);
+
                     std::cout << "reset done at time: " << last_reset_sec_ << "s "
                               << last_reset_nanosec_ << "ns" << std::endl;
                 }
@@ -255,9 +260,11 @@ class RobotBridge : public UnitreeSDK2BridgeBase
             highstate->msg_.position()[0] = mj_data_->sensordata[dim_motor_sensor_ + 10];
             highstate->msg_.position()[1] = mj_data_->sensordata[dim_motor_sensor_ + 11];
             highstate->msg_.position()[2] = mj_data_->sensordata[dim_motor_sensor_ + 12];
+            // world frame pos
             highstate->msg_.velocity()[0] = mj_data_->sensordata[dim_motor_sensor_ + 13];
             highstate->msg_.velocity()[1] = mj_data_->sensordata[dim_motor_sensor_ + 14];
             highstate->msg_.velocity()[2] = mj_data_->sensordata[dim_motor_sensor_ + 15];
+            // world frame linvel
             highstate->unlockAndPublish();
         }
         // wireless_controller
