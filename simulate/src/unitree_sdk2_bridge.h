@@ -144,11 +144,22 @@ class RobotBridge : public UnitreeSDK2BridgeBase
         // lowcmd
         {
             std::lock_guard<std::mutex> lock(lowcmd->mutex_);
-            for (int i(0); i < num_motor_; i++)
+
+            if (lowcmd->isTimeout())
             {
-                auto &m = lowcmd->msg_.motor_cmd()[i];
-                mj_data_->ctrl[i] = m.tau() + m.kp() * (m.q() - mj_data_->sensordata[i]) +
-                                    m.kd() * (m.dq() - mj_data_->sensordata[i + num_motor_]);
+                for (int i = 0; i < mj_model_->nu; i++)
+                {
+                    mj_data_->ctrl[i] = 0;
+                }
+            }
+            else
+            {
+                for (int i(0); i < num_motor_; i++)
+                {
+                    auto &m = lowcmd->msg_.motor_cmd()[i];
+                    mj_data_->ctrl[i] = m.tau() + m.kp() * (m.q() - mj_data_->sensordata[i]) +
+                                        m.kd() * (m.dq() - mj_data_->sensordata[i + num_motor_]);
+                }
             }
         }
         // reset
@@ -162,8 +173,8 @@ class RobotBridge : public UnitreeSDK2BridgeBase
             double time_changed = (double)new_sec + (double)new_nanosec * 1e-9 -
                                   ((double)last_reset_sec_ + (double)last_reset_nanosec_ * 1e-9);
 
-            std::cout << "time_changed: " << time_changed << std::endl;
-            std::cout << "new_reset: " << new_reset << std::endl;
+            // std::cout << "time_changed: " << time_changed << std::endl;
+            // std::cout << "new_reset: " << new_reset << std::endl;
 
             if (new_reset && (time_changed > 0.1))
             {
