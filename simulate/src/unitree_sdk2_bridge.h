@@ -154,44 +154,47 @@ class RobotBridge : public UnitreeSDK2BridgeBase
         // reset
         {
             std::lock_guard<std::mutex> lock(reset->mutex_);
+            auto new_sec = reset->msg_.sec();
+            auto new_nanosec = reset->msg_.nanosec();
 
-            // std::cout << "try reset" << std::endl;
-            if (!reset->isTimeout())
+            bool new_reset = (new_sec != last_reset_sec_ || new_nanosec != last_reset_nanosec_);
+
+            double time_changed = (double)new_sec + (double)new_nanosec * 1e-9 -
+                                  ((double)last_reset_sec_ + (double)last_reset_nanosec_ * 1e-9);
+
+            std::cout << "time_changed: " << time_changed << std::endl;
+            std::cout << "new_reset: " << new_reset << std::endl;
+
+            if (new_reset && (time_changed > 0.1))
             {
-                // 检查reset时间是否发生变化
-                bool time_changed = (reset->msg_.sec() != last_reset_sec_) ||
-                                    (reset->msg_.nanosec() != last_reset_nanosec_);
+                // 更新记录的时间
+                last_reset_sec_ = new_sec;
+                last_reset_nanosec_ = new_nanosec;
 
-                if (time_changed)
+                // 执行reset操作
+                for (int i = 0; i < mj_model_->nu; i++)
                 {
-                    // 更新记录的时间
-                    last_reset_sec_ = reset->msg_.sec();
-                    last_reset_nanosec_ = reset->msg_.nanosec();
-
-                    // 执行reset操作
-                    // mj_resetData(mj_model_, mj_data_);
-                    for (int i = 0; i < mj_model_->nu; i++)
-                    {
-                        mj_data_->ctrl[i] = 0;
-                    }
-                    for (int i = 0; i < mj_model_->nv; i++)
-                    {
-                        mj_data_->qvel[i] = 0;
-                        // mj_data_->sensordata[i + num_motor_] = 0;
-                        // mj_data_->sensordata[i + 2 * num_motor_] = 0;
-                    }
-                    for (int i = 0; i < mj_model_->nq; i++)
-                    {
-                        mj_data_->qpos[i] = 0;
-                        // mj_data_->sensordata[i] = 0;
-                    }
-                    mj_data_->qpos[2] = 0.79;
-                    mj_data_->qpos[3] = 1.0;
-                    mj_forward(mj_model_, mj_data_);
-
-                    std::cout << "reset done at time: " << last_reset_sec_ << "s "
-                              << last_reset_nanosec_ << "ns" << std::endl;
+                    mj_data_->ctrl[i] = 0;
                 }
+                for (int i = 0; i < mj_model_->nv; i++)
+                {
+                    mj_data_->qvel[i] = 0;
+                    // mj_data_->sensordata[i + num_motor_] = 0;
+                    // mj_data_->sensordata[i + 2 * num_motor_] = 0;
+                }
+                for (int i = 0; i < mj_model_->nq; i++)
+                {
+                    mj_data_->qpos[i] = 0;
+                    // mj_data_->sensordata[i] = 0;
+                }
+                mj_data_->qpos[2] = 0.79;
+                mj_data_->qpos[3] = 1.0;
+                // mj_forward(mj_model_, mj_data_);
+
+                // mj_resetData(mj_model_, mj_data_);
+
+                std::cout << "reset done at time: " << last_reset_sec_ << "s "
+                          << last_reset_nanosec_ << "ns" << std::endl;
             }
         }
 
