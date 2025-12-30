@@ -36,10 +36,11 @@ class UnitreeSDK2BridgeBase
                 joystick = std::make_shared<SwitchJoystick>(param::config.joystick_device,
                                                             param::config.joystick_bits);
             }
-            else if (param::config.joystick_type == "badusb")
+            else if (param::config.joystick_type == "keyboard")
             {
-                joystick = std::make_shared<BadUSBJoystick>(param::config.joystick_device,
-                                                            param::config.joystick_bits);
+                joystick = std::make_shared<EventKeyboardJoystick>(
+                    param::config.joystick_device   // e.g.: /dev/input/event3
+                );
             }
             else
             {
