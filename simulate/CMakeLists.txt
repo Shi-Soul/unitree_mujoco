@@ -53,64 +53,7 @@ add_executable(unitree_mujoco ${SIM_SRC} src/main.cc)
 target_include_directories(unitree_mujoco PRIVATE ${FMT_INCLUDE_DIRS})
 target_link_libraries(unitree_mujoco ${SIM_DEPENDENCIES})
 
-# Build DDS version with reset functionality
-add_executable(unitree_mujoco_dds ${SIM_SRC} src/main_dds.cc)
-target_include_directories(unitree_mujoco_dds PRIVATE ${FMT_INCLUDE_DIRS})
-target_link_libraries(unitree_mujoco_dds ${SIM_DEPENDENCIES})
-
-# Build DDS reset publisher utility
-add_executable(dds_reset_publisher scripts/dds_reset_publisher.cpp)
-target_link_libraries(dds_reset_publisher unitree_sdk2)
-
-# Build ROS2 version if requested
-if(BUILD_ROS2)
-  set(ROS2_DEPENDENCIES
-      ${SIM_DEPENDENCIES}
-  )
-  
-  add_executable(unitree_mujoco_ros ${SIM_SRC} src/main_ros.cc)
-  target_include_directories(unitree_mujoco_ros PRIVATE ${FMT_INCLUDE_DIRS})
-  target_link_libraries(unitree_mujoco_ros ${ROS2_DEPENDENCIES})
-  
-  # ROS2 specific settings
-  ament_target_dependencies(unitree_mujoco_ros
-    rclcpp
-    std_msgs
-  )
-  
-  install(TARGETS unitree_mujoco_ros
-    DESTINATION lib/${PROJECT_NAME}
-  )
-  
-  # Install launch files
-  install(DIRECTORY launch/
-    DESTINATION share/${PROJECT_NAME}/launch
-  )
-  
-  # Install scripts
-  install(PROGRAMS scripts/test_reset.py
-    DESTINATION lib/${PROJECT_NAME}
-  )
-endif()
+add_executable(test_reset src/test_reset.cc)
+target_link_libraries(test_reset ${SIM_DEPENDENCIES})
 
 add_executable(jstest src/joystick/jstest.cc src/joystick/joystick.cc)
-
-# Install original executable
-install(TARGETS unitree_mujoco
-  DESTINATION bin
-)
-
-# Install DDS version executable
-install(TARGETS unitree_mujoco_dds
-  DESTINATION bin
-)
-
-# Install DDS reset publisher utility
-install(TARGETS dds_reset_publisher
-  DESTINATION bin
-)
-
-# Install ROS2 package if building ROS2 version
-if(BUILD_ROS2)
-  ament_package()
-endif()
