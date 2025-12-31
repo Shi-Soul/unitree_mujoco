@@ -1,11 +1,11 @@
-robot: "g1"  # Robot name, "go2", "b2", "b2w", "h1", "go2w", "g1"
-robot_scene: "scene.xml" # Robot scene, /unitree_robots/[robot]/scene.xml 
+robot: "g1" # Robot name, "go2", "b2", "b2w", "h1", "go2w", "g1"
+robot_scene: "scene.xml" # Robot scene, /unitree_robots/[robot]/scene.xml
 
-domain_id: 1  # Domain id
-interface: "eno1" # Interface 
+domain_id: 1 # Domain id
+interface: "eno1" # Interface
 
 use_joystick: 1 # Simulate Unitree WirelessController using a gamepad
-joystick_type: "keyboard_event" # support "xbox" and "switch" gamepad layout
+joystick_type: "keyboard" # support "xbox" and "switch" gamepad layout
 joystick_device: "/dev/input/event5" # Device path
 joystick_bits: 16 # Some game controllers may only have 8-bit accuracy
 
