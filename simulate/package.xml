@@ -5,7 +5,7 @@
   <version>1.0.0</version>
   <description>Unitree MuJoCo Simulation with ROS2 Reset Support</description>
   
-  <maintainer email="bai@example.com">bai</maintainer>
+  <maintainer>Weiji Xie</maintainer>
   <license>Apache-2.0</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
