@@ -132,7 +132,7 @@ class RobotBridge : public UnitreeSDK2BridgeBase
         reset->set_timeout_ms(50);
         lowstate = std::make_unique<LowState_t>();
         lowstate->joystick = joystick;
-        highstate = std::make_unique<HighState_t>();
+        highstate = std::make_unique<HighState_t>("rt/odommodestate");
         wireless_controller = std::make_unique<WirelessController_t>();
         wireless_controller->joystick = joystick;
         thread_ = std::make_shared<unitree::common::RecurrentThread>(
